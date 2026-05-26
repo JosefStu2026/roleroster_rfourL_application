@@ -17,17 +17,23 @@ RoleRoster is a Flutter + Firebase group management and task tracking app for sm
 
 ### Option 1: Install the APK on an Android device
 
-Use the built debug APK located at:
+Use the built debug APK:
 
-[build/app/outputs/flutter-apk/app-debug.apk](build/app/outputs/flutter-apk/app-debug.apk)
+[app-debug.apk](build/app/outputs/flutter-apk/app-debug.apk)
 
 Steps:
 
-1. Copy the APK to your phone or tablet, or send it through Drive, OneDrive, Telegram, or USB.
+1. Download the APK file from this workspace or share it to your phone through Drive, OneDrive, Telegram, or USB.
 2. On the device, allow installs from unknown apps for the app you used to open the file.
 3. Open the APK file and install it.
 4. Sign in or create an account.
 5. Create a group, add members, assign tasks, and test notifications.
+
+How to download it:
+
+1. Click the `app-debug.apk` link above.
+2. In the file viewer, use the download/save option if available, or open the APK location in your file explorer and copy the file to a shareable folder.
+3. Send that APK file to the other Android devices.
 
 ### Option 2: Run from the Flutter project
 
