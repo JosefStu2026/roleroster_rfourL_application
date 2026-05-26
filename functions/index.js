@@ -4,6 +4,21 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const db = admin.firestore();
 
+async function sendPushToRecipient(recipientId, payload) {
+  const userSnap = await db.collection('users').doc(recipientId).get();
+  if (!userSnap.exists) return;
+
+  const token = userSnap.get('fcmToken');
+  if (!token) return;
+
+  await admin.messaging().send({
+    token,
+    notification: payload.notification,
+    android: payload.android,
+    data: payload.data,
+  });
+}
+
 // Send FCM when a notification document is created
 exports.sendFcmOnNotification = functions.firestore
   .document('notifications/{nid}')
@@ -14,11 +29,6 @@ exports.sendFcmOnNotification = functions.firestore
     if (!recipientId) return null;
 
     try {
-      const userSnap = await db.collection('users').doc(recipientId).get();
-      if (!userSnap.exists) return null;
-      const token = userSnap.get('fcmToken');
-      if (!token) return null;
-
       const payload = {
         notification: {
           title: data.title || 'Notification',
@@ -39,7 +49,7 @@ exports.sendFcmOnNotification = functions.firestore
         },
       };
 
-      await admin.messaging().sendToDevice(token, payload);
+      await sendPushToRecipient(recipientId, payload);
     } catch (err) {
       console.error('sendFcmOnNotification error', err);
     }
@@ -89,26 +99,20 @@ exports.scheduledDueDateCheck = functions.pubsub
 
           // send immediate FCM if token exists
           try {
-            const userSnap = await db.collection('users').doc(memberId).get();
-            if (userSnap.exists) {
-              const token = userSnap.get('fcmToken');
-              if (token) {
-                await admin.messaging().sendToDevice(token, {
-                  notification: {
-                    title: payload.title,
-                    body: payload.body,
-                  },
-                  android: {
-                    priority: 'high',
-                    notification: {
-                      channelId: 'role_roster_notifications',
-                      sound: 'default',
-                    },
-                  },
-                  data: { type: payload.type, groupId: payload.groupId },
-                });
-              }
-            }
+            await sendPushToRecipient(memberId, {
+              notification: {
+                title: payload.title,
+                body: payload.body,
+              },
+              android: {
+                priority: 'high',
+                notification: {
+                  channelId: 'role_roster_notifications',
+                  sound: 'default',
+                },
+              },
+              data: { type: payload.type, groupId: payload.groupId },
+            });
           } catch (err) {
             console.error('scheduledDueDateCheck send error', err);
           }

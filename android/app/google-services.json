@@ -29,6 +29,13 @@
             {
               "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "708125558269-tp5t1q6dcvt98ujp6h5qdvnpm9p0ki7a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.rolerosterRfourlApplicationTemp"
+              }
             }
           ]
         }
@@ -42,6 +49,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "708125558269-lalrmp72f79vdda2103bam2224bpnjim.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.roleroster_rfourl_application_temp",
+            "certificate_hash": "1f4dc050a1ac5713262bbc31641c9f20404beefd"
+          }
+        },
         {
           "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
           "client_type": 3
@@ -58,6 +73,13 @@
             {
               "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "708125558269-tp5t1q6dcvt98ujp6h5qdvnpm9p0ki7a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.rolerosterRfourlApplicationTemp"
+              }
             }
           ]
         }

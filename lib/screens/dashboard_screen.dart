@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/task_provider.dart';
+import 'notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -91,6 +92,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const Spacer(),
+                    Consumer<NotificationProvider>(
+                      builder: (context, notificationProv, _) {
+                        final unreadCount = notificationProv.unreadCount;
+                        return IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
+                            );
+                          },
+                          icon: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              const Icon(Icons.notifications_outlined,
+                                  color: AppColors.white),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: -2,
+                                  top: -2,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.accent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 9
+                                          ? '9+'
+                                          : unreadCount.toString(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: AppColors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

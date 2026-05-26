@@ -125,8 +125,28 @@ class GroupService {
 
   // ── Add member to group ───────────────────────────────────────────────────
   Future<void> addMember(String groupId, String userId) async {
+    final groupSnap = await _groups.doc(groupId).get();
+    if (!groupSnap.exists || groupSnap.data() == null) return;
+    final group = GroupModel.fromMap(
+      groupSnap.data() as Map<String, dynamic>,
+      groupSnap.id,
+    );
+
     await _groups.doc(groupId).update({
       'memberIds': FieldValue.arrayUnion([userId]),
+    });
+
+    await _notifications.doc('member_added_${groupId}_$userId').set({
+      'recipientId': userId,
+      'type': 'group_member_added',
+      'title': 'Added to group',
+      'body': '${group.leaderName} added you to ${group.name}.',
+      'taskId': '',
+      'groupId': groupId,
+      'actorId': group.leaderId,
+      'actorName': group.leaderName,
+      'createdAt': DateTime.now().toIso8601String(),
+      'readAt': null,
     });
   }
 

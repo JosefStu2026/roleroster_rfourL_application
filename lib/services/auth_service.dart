@@ -10,6 +10,9 @@ class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
+  static const String _androidWebClientId =
+      '708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com';
+
   // ── Current user stream (used by AuthProvider) ────────────────────────────
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -90,7 +93,10 @@ class AuthService {
       return profile;
     }
 
-    final googleSignIn = GoogleSignIn(scopes: ['email']);
+    final googleSignIn = GoogleSignIn(
+      scopes: ['email'],
+      serverClientId: _androidWebClientId,
+    );
     final googleUser = await googleSignIn.signIn();
     if (googleUser == null) {
       throw StateError('Google sign-in was cancelled.');

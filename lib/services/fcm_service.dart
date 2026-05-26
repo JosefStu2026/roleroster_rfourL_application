@@ -47,12 +47,14 @@ class FcmService {
         // ignore: avoid_print
         print('FCM message received: ${message.notification?.title}');
         final notification = message.notification;
-        if (notification == null) return;
+        final title = notification?.title ?? message.data['title']?.toString();
+        final body = notification?.body ?? message.data['body']?.toString();
+        if (title == null && body == null) return;
 
         _localNotificationsPlugin.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
+          message.hashCode,
+          title,
+          body,
           NotificationDetails(
             android: AndroidNotificationDetails(
               _channel.id,

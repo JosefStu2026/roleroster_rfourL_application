@@ -1,11 +1,10 @@
-// lib/screens/register_screen.dart
-// REPLACE your existing register_screen.dart with this file.
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../providers/auth_provider.dart';
+import 'forgot_password_screen.dart';
+import 'login_screen.dart';
 import 'main_shell.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -55,32 +54,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // ── Helper to build a styled text field ───────────────────────────────────
-  Widget _field(TextEditingController ctrl,
-      {required String hint,
-      required IconData icon,
-      bool obscure = false,
-      String? helper,
-      TextInputType? keyboard}) {
-    return TextField(
-      controller: ctrl,
-      obscureText: obscure,
-      keyboardType: keyboard,
-      decoration: InputDecoration(
-        hintText: hint,
-        helperText: helper,
-        helperMaxLines: 2,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: AppColors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isLoading =
@@ -90,58 +63,121 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 40),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           child: Column(
             children: [
-              const RoleRosterLogo(
-                size: 44,
-                textColor: AppColors.white,
+              const SizedBox(height: 24),
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 420),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 24,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    const RoleRosterLogo(
+                      size: 44,
+                      textColor: AppColors.white,
+                    ),
+                    const SizedBox(height: 24),
+                    AuthCard(
+                      children: [
+                        const Text(
+                          'Register',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _usernameCtrl,
+                          decoration: const InputDecoration(
+                            hintText: 'Username',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            hintText: 'Email address',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _passCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Password',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _confirmCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Confirm password',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            ),
+                            child: const Text(
+                              'Forgot the Password?',
+                              style: TextStyle(color: AppColors.textMid),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : RRButton(label: 'Register', onTap: _register),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          ),
+                          child: const Text(
+                            'Already have Account?',
+                            style: TextStyle(color: AppColors.textMid),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 40),
-              _buildCredentials(isLoading),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  // ── Step 0: Email / Password ───────────────────────────────────────────────
-  Widget _buildCredentials(bool isLoading) {
-    return AuthCard(
-      children: [
-        const Text('Register',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 24),
-        _field(_usernameCtrl, hint: 'Username', icon: Icons.person_outline),
-        const SizedBox(height: 12),
-        _field(_emailCtrl,
-            hint: 'Email address',
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress),
-        const SizedBox(height: 12),
-        _field(_passCtrl,
-            hint: 'Password',
-            icon: Icons.lock_outline,
-            obscure: true,
-            helper: 'Must contain letters, numbers, and special characters'),
-        const SizedBox(height: 12),
-        _field(_confirmCtrl,
-            hint: 'Confirm password', icon: Icons.lock_outline, obscure: true),
-        const SizedBox(height: 20),
-        isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RRButton(
-                label: 'Register',
-                onTap: _register,
-              ),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Already have Account?',
-              style: TextStyle(color: AppColors.textMid)),
-        ),
-      ],
     );
   }
 }

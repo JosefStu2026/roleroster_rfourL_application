@@ -55,5 +55,7 @@ flutter run
 ## Notes
 
 - If you use Google sign-in on Android, make sure the Firebase Android app configuration and SHA-1 fingerprint are set correctly.
+- Current debug SHA-1 for this workspace: `1F:4D:C0:50:A1:AC:57:13:26:2B:BC:31:64:1C:9F:20:40:4B:EE:FD`.
+- Add it to the Firebase Android app that matches `com.example.roleroster_rfourl_application_temp`, then download the updated `google-services.json`.
 - If notifications are not arriving, confirm Cloud Functions are deployed and each device has a valid FCM token.
 - The app is intended for private sharing among a small group and does not require Play Store distribution.
