@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive/hive.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
@@ -109,6 +110,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final isLoading = context.watch<ProfileProvider>().loading;
+    String? cachedPhoto;
+    if (user?.uid != null) {
+      try {
+        final box = Hive.box('profiles');
+        cachedPhoto = box.get(user!.uid) as String?;
+      } catch (_) {
+        cachedPhoto = null;
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -158,10 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 48,
                       backgroundColor:
                           AppColors.textMid.withValues(alpha: 0.15),
-                      backgroundImage: user?.photoUrl != null
-                          ? NetworkImage(user!.photoUrl!)
+                      backgroundImage: (user?.photoUrl ?? cachedPhoto) != null
+                          ? NetworkImage(user?.photoUrl ?? cachedPhoto!)
                           : null,
-                      child: user?.photoUrl == null
+                      child: (user?.photoUrl ?? cachedPhoto) == null
                           ? const Icon(Icons.person,
                               size: 56, color: AppColors.primary)
                           : null,

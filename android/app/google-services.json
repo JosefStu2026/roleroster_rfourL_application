@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "708125558269",
+    "project_id": "roleroster-68ac9",
+    "storage_bucket": "roleroster-68ac9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:708125558269:android:4cada09afd84df6ceb8594",
+        "android_client_info": {
+          "package_name": "com.example.roleroster_rfourl_application_tem"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzow7XtaC6QOmsfDIuAyqFlSnBrMkNF9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:708125558269:android:d3e9e5cac7213033eb8594",
+        "android_client_info": {
+          "package_name": "com.example.roleroster_rfourl_application_temp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzow7XtaC6QOmsfDIuAyqFlSnBrMkNF9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "708125558269-8tqhqmq2kv4reu2jdem7jvqtpolv17o0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,9 +9,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileService {
-  final _storage = FirebaseStorage.instance;
-  final _db      = FirebaseFirestore.instance;
-  final _picker  = ImagePicker();
+  FirebaseStorage get _storage => FirebaseStorage.instance;
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+  final _picker = ImagePicker();
 
   // ── Pick image from gallery or camera ─────────────────────────────────────
   Future<File?> pickImage({bool fromCamera = false}) async {
@@ -26,19 +26,13 @@ class ProfileService {
 
   // ── Upload to Firebase Storage & save URL to Firestore ───────────────────
   Future<String> uploadProfilePhoto(String uid, File imageFile) async {
-    final ref = _storage
-        .ref()
-        .child('profile_photos')
-        .child('$uid.jpg');
+    final ref = _storage.ref().child('profile_photos').child('$uid.jpg');
 
     await ref.putFile(imageFile);
     final url = await ref.getDownloadURL();
 
     // Update user's Firestore document with the new photo URL
-    await _db
-        .collection('users')
-        .doc(uid)
-        .update({'photoUrl': url});
+    await _db.collection('users').doc(uid).update({'photoUrl': url});
 
     return url;
   }

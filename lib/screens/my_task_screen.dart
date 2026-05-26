@@ -63,8 +63,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                             onTap: () => Navigator.push(
                                 ctx,
                                 MaterialPageRoute(
-                                    builder: (_) => TaskDetailScreen(
-                                        groupName: t.groupName))),
+                                    builder: (_) => TaskDetailScreen(task: t))),
                             child: _TaskCard(task: t),
                           );
                         },

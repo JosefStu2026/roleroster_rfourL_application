@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/fcm_service.dart';
 import 'login_screen.dart';
 import 'delete_account_screen.dart';
 
@@ -36,6 +37,32 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _Section(title: 'Notifications', tiles: [
+            Consumer<AuthProvider>(builder: (context, auth, _) {
+              final enabled = auth.user?.notificationsEnabled ?? false;
+              return SwitchListTile(
+                title: const Text('Enable Push Notifications'),
+                value: enabled,
+                onChanged: (v) => auth.setNotificationsEnabled(v),
+              );
+            }),
+            ListTile(
+              leading: const Icon(Icons.vpn_key, color: AppColors.textMid),
+              title: const Text('FCM Token'),
+              subtitle: FutureBuilder<String?>(
+                future: FcmService().getToken(),
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Text('Loading...');
+                  }
+                  if (!snap.hasData || snap.data == null) {
+                    return const Text('No token available');
+                  }
+                  return SelectableText(snap.data!);
+                },
+              ),
+            ),
+          ]),
           _Section(title: 'Account', tiles: [
             _Tile(
               icon: Icons.logout,
@@ -60,7 +87,7 @@ class SettingsScreen extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  final String       title;
+  final String title;
   final List<Widget> tiles;
 
   const _Section({required this.title, required this.tiles});
@@ -91,8 +118,8 @@ class _Section extends StatelessWidget {
 
 class _Tile extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final Color    color;
+  final String label;
+  final Color color;
   final VoidCallback onTap;
 
   const _Tile({

@@ -1,143 +1,448 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/group_model.dart';
+import '../models/task_model.dart';
+import '../providers/auth_provider.dart';
+import '../providers/group_provider.dart';
+import '../providers/notification_provider.dart';
+import '../providers/task_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import 'notifications_screen.dart';
+import 'task_detail_screen.dart';
 
-class GroupDetailScreen extends StatelessWidget {
-  final String groupName;
-  const GroupDetailScreen({super.key, required this.groupName});
+class GroupDetailScreen extends StatefulWidget {
+  final GroupModel group;
+
+  const GroupDetailScreen({super.key, required this.group});
+
+  @override
+  State<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends State<GroupDetailScreen> {
+  late Future<List<TaskModel>> _tasksFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasksFuture = _loadTasks();
+  }
+
+  Future<List<TaskModel>> _loadTasks() async {
+    final taskProv = context.read<TaskProvider>();
+    final groupProv = context.read<GroupProvider>();
+
+    final tasks = await taskProv.fetchTasksForGroup(widget.group.id);
+    final done = tasks.where((task) => task.status == 'done').length;
+    if (mounted) {
+      await groupProv.refreshTaskCounts(
+        widget.group.id,
+        tasks.length,
+        done,
+      );
+    }
+    return tasks;
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _tasksFuture = _loadTasks();
+    });
+    await _tasksFuture;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isLeader = groupName == 'Data Analysis';
+    final auth = context.watch<AuthProvider>();
+    final notifications = context.watch<NotificationProvider>();
+    final isLeader = auth.user?.uid == widget.group.leaderId;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(groupName),
+        title: Text(widget.group.name),
         backgroundColor: AppColors.primary,
         actions: [
+          if (isLeader)
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                final gp = context.read<GroupProvider>();
+                final uid = context.read<AuthProvider>().user?.uid;
+                if (uid == null) return;
+                if (v == 'archive') {
+                  final navigator = Navigator.of(context);
+                  final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Mark group completed'),
+                          content: const Text(
+                              'Marking the group as completed will archive it for all members. Continue?'),
+                          actions: [
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel')),
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Confirm')),
+                          ],
+                        ),
+                      ) ??
+                      false;
+                  if (ok) {
+                    await gp.archiveGroup(
+                      groupId: widget.group.id,
+                      requesterId: uid,
+                    );
+                    if (mounted) navigator.pop();
+                  }
+                } else if (v == 'delete') {
+                  final navigator = Navigator.of(context);
+                  final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Delete group'),
+                          content: const Text(
+                              'This will delete the group and its tasks for all members. This action cannot be undone.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel')),
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Delete',
+                                    style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      ) ??
+                      false;
+                  if (ok) {
+                    await gp.deleteGroup(
+                      groupId: widget.group.id,
+                      requesterId: uid,
+                    );
+                    if (mounted) navigator.pop();
+                  }
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'archive', child: Text('Mark Completed')),
+                const PopupMenuItem(
+                    value: 'delete', child: Text('Delete Group')),
+              ],
+            ),
           Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(8),
-                child:
-                    Icon(Icons.notifications_outlined, color: AppColors.white),
+              IconButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.notifications_outlined,
+                    color: AppColors.white),
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
+              if (notifications.unreadCount > 0)
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Container(
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                        shape: BoxShape.circle, color: Colors.red)),
-              ),
+                        shape: BoxShape.circle, color: Colors.red),
+                  ),
+                ),
             ],
-          ),
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primary,
-            child: Text('JC',
-                style: TextStyle(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12)),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const RRSearchBar(hint: 'Search groups...'),
-            const SizedBox(height: 16),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<List<TaskModel>>(
+          future: _tasksFuture,
+          builder: (context, snapshot) {
+            final tasks = (snapshot.data ?? const <TaskModel>[])
+                .where((task) => task.status != 'archived')
+                .toList();
+            final totalTasks = tasks.length;
+            final completedTasks =
+                tasks.where((task) => task.status == 'done').length;
+            final inProgressTasks =
+                tasks.where((task) => task.status == 'in_progress').length;
+            final todoTasks =
+                tasks.where((task) => task.status == 'pending').length;
+            final workload = _buildWorkload(tasks);
+            final progress =
+                totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+            final balanceScore = _balanceScore(workload.values.toList());
+            final balanceLabel = _balanceLabel(balanceScore);
 
-            // Leader: show workload balance
-            if (isLeader) ...[
-              Row(
-                children: [
-                  Text(groupName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFCDD2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text('You are the Leader',
-                        style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _WorkloadCard(),
-              const SizedBox(height: 16),
-            ],
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            // Members & Roles
-            _SectionCard(
-              title: 'Members & Roles',
-              child: Column(
-                children: [
-                  _MemberRow('JC', '123', 'Leader', isLeader: false),
-                  _MemberRow('Diana', '124', 'Week 2 Rep', isLeader: isLeader),
-                  _MemberRow('Onia', '125', 'Week 1 Rep', isLeader: isLeader),
-                  _MemberRow('Diana', '124', 'Week 2 Rep', isLeader: isLeader),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('See more',
-                        style: TextStyle(color: AppColors.primary)),
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const RRSearchBar(hint: 'Search groups...'),
+                const SizedBox(height: 16),
+                _HeaderCard(group: widget.group, isLeader: isLeader),
+                const SizedBox(height: 16),
+                _ProgressCard(
+                  totalTasks: totalTasks,
+                  completedTasks: completedTasks,
+                  inProgressTasks: inProgressTasks,
+                  todoTasks: todoTasks,
+                  progress: progress,
+                ),
+                const SizedBox(height: 16),
+                _WorkloadCard(
+                  group: widget.group,
+                  workload: workload,
+                  balanceScore: balanceScore,
+                  balanceLabel: balanceLabel,
+                ),
+                const SizedBox(height: 16),
+                _SectionCard(
+                  title: 'Members & Roles',
+                  child: Column(
+                    children: [
+                      ...widget.group.memberIds.map(
+                        (memberId) => _MemberRow(
+                          groupId: widget.group.id,
+                          name: widget.group.memberNames[memberId] ?? memberId,
+                          id: memberId,
+                          role: widget.group.memberRoles[memberId] ?? 'Member',
+                          isLeader: isLeader,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Tasks
-            _SectionCard(
-              title: 'Tasks',
-              child: Column(
-                children: [
-                  _TaskRow('Progress Report', 'Week 1 Rep', 'Completed',
-                      canReassign: isLeader),
-                  _TaskRow('Python Code', 'Leader', 'in-progress',
-                      canReassign: isLeader),
-                  _TaskRow('Progress Report', 'Week 1 Rep', 'Completed',
-                      canReassign: isLeader),
-                  _TaskRow('Python Code', 'Leader', 'in-progress',
-                      canReassign: isLeader),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('See more',
-                        style: TextStyle(color: AppColors.primary)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                const SizedBox(height: 16),
+                _SectionCard(
+                  title: 'Tasks',
+                  child: tasks.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            'No tasks yet in this group.',
+                            style: TextStyle(color: AppColors.textLight),
+                          ),
+                        )
+                      : Column(
+                          children: tasks
+                              .map(
+                                (task) => GestureDetector(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            TaskDetailScreen(task: task),
+                                      ),
+                                    );
+                                    if (mounted) {
+                                      await _refresh();
+                                    }
+                                  },
+                                  child: _TaskRow(
+                                    task: task,
+                                    canReassign: isLeader,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ],
+            );
+          },
         ),
+      ),
+    );
+  }
+
+  Map<String, int> _buildWorkload(List<TaskModel> tasks) {
+    final workload = <String, int>{
+      for (final memberId in widget.group.memberIds) memberId: 0,
+    };
+
+    for (final task in tasks) {
+      if (task.status == 'archived') continue;
+      workload[task.assignedToId] = (workload[task.assignedToId] ?? 0) + 1;
+    }
+
+    return workload;
+  }
+
+  String _balanceLabel(double score) {
+    if (score <= 0.15) return 'Balanced';
+    if (score <= 0.35) return 'Mostly balanced';
+    return 'Needs attention';
+  }
+
+  double _balanceScore(List<int> values) {
+    if (values.isEmpty) return 0;
+    final maxCount = values.reduce((a, b) => a > b ? a : b);
+    final minCount = values.reduce((a, b) => a < b ? a : b);
+    final spread = maxCount - minCount;
+    final total = values.fold<int>(0, (sum, value) => sum + value);
+    if (total == 0) return 0;
+    return spread / (total == 0 ? 1 : total);
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final GroupModel group;
+  final bool isLeader;
+
+  const _HeaderCard({required this.group, required this.isLeader});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(group.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 20)),
+                    const SizedBox(height: 4),
+                    Text(group.title,
+                        style: const TextStyle(color: AppColors.textLight)),
+                  ],
+                ),
+              ),
+              if (isLeader)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFCDD2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('You are the Leader',
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text('Project started: ${_formatDate(group.startedAt)}'),
+          Text('Project due: ${_formatDate(group.dueAt)}'),
+          Text('Leader: ${group.leaderName}'),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) => '${date.month}/${date.day}/${date.year}';
+}
+
+class _ProgressCard extends StatelessWidget {
+  final int totalTasks;
+  final int completedTasks;
+  final int inProgressTasks;
+  final int todoTasks;
+  final double progress;
+
+  const _ProgressCard({
+    required this.totalTasks,
+    required this.completedTasks,
+    required this.inProgressTasks,
+    required this.todoTasks,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Group Progress Tracking',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              backgroundColor: AppColors.divider,
+              valueColor: const AlwaysStoppedAnimation(AppColors.progressBlue),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text('${(progress * 100).round()}% complete'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                  child: _MetricCard(label: 'Total', value: '$totalTasks')),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _MetricCard(label: 'Done', value: '$completedTasks')),
+              const SizedBox(width: 8),
+              Expanded(
+                  child:
+                      _MetricCard(label: 'Doing', value: '$inProgressTasks')),
+              const SizedBox(width: 8),
+              Expanded(child: _MetricCard(label: 'To do', value: '$todoTasks')),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
 class _WorkloadCard extends StatelessWidget {
+  final GroupModel group;
+  final Map<String, int> workload;
+  final double balanceScore;
+  final String balanceLabel;
+
+  const _WorkloadCard({
+    required this.group,
+    required this.workload,
+    required this.balanceScore,
+    required this.balanceLabel,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final members = [
-      ('Onia (Week 1 Rep)', '1 task'),
-      ('Diana (Week 2 Rep)', '1 task'),
-      ('JC (Leader)', '2 task'),
-      ('Gab (Week 3 Rep)', '1 task'),
-    ];
+    final maxTasks = workload.values.isEmpty
+        ? 0
+        : workload.values.reduce((a, b) => a > b ? a : b);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -151,23 +456,77 @@ class _WorkloadCard extends StatelessWidget {
           const Text('Workload Balance Check',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 8),
-          ...members.map(
-            (m) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Text(
+            'Balance status: $balanceLabel',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          ...group.memberIds.map((memberId) {
+            final count = workload[memberId] ?? 0;
+            final ratio = maxTasks == 0 ? 0.0 : count / maxTasks;
+            final name = group.memberNames[memberId] ?? memberId;
+            final role = group.memberRoles[memberId] ?? 'Member';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(m.$1, style: const TextStyle(fontSize: 13)),
-                  Text(m.$2, style: const TextStyle(fontSize: 13)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text('$name · $role',
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                      Text('$count task${count == 1 ? '' : 's'}',
+                          style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      minHeight: 8,
+                      backgroundColor: Colors.white,
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.accent,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {},
-            child: const Text('See more',
-                style: TextStyle(color: AppColors.primary)),
-          ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MetricCard({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: const TextStyle(color: AppColors.textLight, fontSize: 11)),
         ],
       ),
     );
@@ -203,10 +562,16 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _MemberRow extends StatelessWidget {
+  final String groupId;
   final String name, id, role;
   final bool isLeader;
 
-  const _MemberRow(this.name, this.id, this.role, {required this.isLeader});
+  const _MemberRow(
+      {required this.groupId,
+      required this.name,
+      required this.id,
+      required this.role,
+      required this.isLeader});
 
   @override
   Widget build(BuildContext context) {
@@ -244,11 +609,45 @@ class _MemberRow extends StatelessWidget {
           ),
           if (isLeader && role != 'Leader') ...[
             const SizedBox(width: 8),
-            const Text('Edit',
-                style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13)),
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                final gp = context.read<GroupProvider>();
+                final uid = context.read<AuthProvider>().user?.uid;
+                if (uid == null) return;
+                if (v == 'remove') {
+                  final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Remove member'),
+                          content: Text('Remove $name from this group?'),
+                          actions: [
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel')),
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Remove',
+                                    style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      ) ??
+                      false;
+                  if (ok) {
+                    await gp.removeMember(
+                      groupId: groupId,
+                      memberId: id,
+                      removedById: uid,
+                    );
+                  }
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'remove', child: Text('Remove member')),
+              ],
+            ),
           ],
         ],
       ),
@@ -257,11 +656,10 @@ class _MemberRow extends StatelessWidget {
 }
 
 class _TaskRow extends StatelessWidget {
-  final String taskName, assignedTo, status;
+  final TaskModel task;
   final bool canReassign;
 
-  const _TaskRow(this.taskName, this.assignedTo, this.status,
-      {required this.canReassign});
+  const _TaskRow({required this.task, required this.canReassign});
 
   @override
   Widget build(BuildContext context) {
@@ -278,41 +676,36 @@ class _TaskRow extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(taskName,
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-              StatusBadge(label: status),
+              Expanded(
+                child: Text(task.title,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+              StatusBadge(label: _displayStatus(task.status)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Assigned to: $assignedTo',
+          Text('Assigned to: ${task.assignedToName}',
+              style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
+          Text('Role: ${task.role}',
               style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
           if (canReassign) ...[
             const SizedBox(height: 6),
-            Row(
-              children: [
-                const Text('Reassign to : ',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMid)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text('Week 1 Re..', style: TextStyle(fontSize: 12)),
-                      Icon(Icons.expand_more, size: 16),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            const Text('Open the task to reassign or update status',
+                style: TextStyle(fontSize: 12, color: AppColors.textMid)),
           ],
         ],
       ),
     );
+  }
+
+  String _displayStatus(String status) {
+    switch (status) {
+      case 'done':
+        return 'Completed';
+      case 'in_progress':
+        return 'On Going';
+      default:
+        return 'To Do';
+    }
   }
 }

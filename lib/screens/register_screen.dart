@@ -16,16 +16,16 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  int     _step         = 0;
+  int _step = 0;
   String? _selectedRole;
-  bool    _dropdownOpen = false;
+  bool _dropdownOpen = false;
 
   final _usernameCtrl = TextEditingController();
-  final _emailCtrl    = TextEditingController();
-  final _passCtrl     = TextEditingController();
-  final _confirmCtrl  = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
 
-  final _roles = ['Teacher', 'Student'];
+  final _roles = ['Leader', 'Member'];
 
   Future<void> _register() async {
     if (_passCtrl.text != _confirmCtrl.text) {
@@ -37,10 +37,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final auth = context.read<AuthProvider>();
     final ok = await auth.register(
-      email:    _emailCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
       password: _passCtrl.text,
       username: _usernameCtrl.text.trim(),
-      role:     _selectedRole!,
+      role: _selectedRole!,
     );
 
     if (!mounted) return;
@@ -120,8 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
         const SizedBox(height: 24),
-        _field(_usernameCtrl,
-            hint: 'Username', icon: Icons.person_outline),
+        _field(_usernameCtrl, hint: 'Username', icon: Icons.person_outline),
         const SizedBox(height: 12),
         _field(_emailCtrl,
             hint: 'Email address',
@@ -135,9 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             helper: 'Must contain letters, numbers, and special characters'),
         const SizedBox(height: 12),
         _field(_confirmCtrl,
-            hint: 'Confirm password',
-            icon: Icons.lock_outline,
-            obscure: true),
+            hint: 'Confirm password', icon: Icons.lock_outline, obscure: true),
         const SizedBox(height: 20),
         RRButton(
             label: 'Next',
@@ -146,9 +143,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (_usernameCtrl.text.isEmpty ||
                   _emailCtrl.text.isEmpty ||
                   _passCtrl.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please fill in all fields.')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Please fill in all fields.')));
                 return;
               }
               setState(() => _step = 1);
@@ -173,8 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         GestureDetector(
           onTap: () => setState(() => _dropdownOpen = !_dropdownOpen),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.white,
               borderRadius: BorderRadius.circular(30),
@@ -183,11 +178,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(_selectedRole ?? 'Select role',
-                    style:
-                        const TextStyle(color: AppColors.textMid)),
-                Icon(_dropdownOpen
-                    ? Icons.expand_less
-                    : Icons.expand_more),
+                    style: const TextStyle(color: AppColors.textMid)),
+                Icon(_dropdownOpen ? Icons.expand_less : Icons.expand_more),
               ],
             ),
           ),
@@ -211,8 +203,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 16),
-                          child: Text(r,
-                              style: const TextStyle(fontSize: 16)),
+                          child: Text(r, style: const TextStyle(fontSize: 16)),
                         ),
                       ))
                   .toList(),
@@ -228,8 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
         TextButton(
           onPressed: () => setState(() => _step = 0),
-          child: const Text('Back',
-              style: TextStyle(color: AppColors.textMid)),
+          child: const Text('Back', style: TextStyle(color: AppColors.textMid)),
         ),
       ],
     );

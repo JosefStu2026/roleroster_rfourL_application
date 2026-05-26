@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
+import 'create_group_project_screen.dart';
 import 'group_detail_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
@@ -26,36 +27,16 @@ class _GroupsScreenState extends State<GroupsScreen> {
     });
   }
 
-  Future<void> _showCreateDialog() async {
-    final ctrl = TextEditingController();
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Create Group'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Group name'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (ctrl.text.trim().isEmpty) return;
-              final auth = context.read<AuthProvider>();
-              await context.read<GroupProvider>().createGroup(
-                    name: ctrl.text.trim(),
-                    leaderId: auth.user!.uid,
-                    leaderName: auth.user!.username,
-                  );
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+  Future<void> _openCreateProjectForm() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateGroupProjectScreen()),
     );
+    if (!mounted) return;
+    final uid = context.read<AuthProvider>().user?.uid;
+    if (uid != null) {
+      await context.read<GroupProvider>().loadGroups(uid);
+    }
   }
 
   @override
@@ -66,11 +47,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.white,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateDialog,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: AppColors.white),
-      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -82,6 +58,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       style:
                           TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const Spacer(),
+                  IconButton(
+                    onPressed: _openCreateProjectForm,
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: AppColors.primary, size: 30),
+                    tooltip: 'Create group',
+                  ),
+                  const SizedBox(width: 8),
                   Container(
                     width: 36,
                     height: 36,
@@ -119,8 +102,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
                               onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) => GroupDetailScreen(
-                                          groupName: g.name))),
+                                      builder: (_) =>
+                                          GroupDetailScreen(group: g))),
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(16),

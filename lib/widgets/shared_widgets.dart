@@ -161,28 +161,36 @@ class StatusBadge extends StatelessWidget {
   Color get _bg {
     switch (label.toLowerCase()) {
       case 'completed':
-        return AppColors.tagBlue;
+        return AppColors.doneBg;
       case 'in progress':
       case 'in-progress':
-        return const Color(0xFFFFCDD2);
+        return AppColors.inProgressBg;
       case 'to do':
-        return AppColors.tagBlue;
+      case 'todo':
+      case 'pending':
+        return AppColors.todoBg;
+      case 'overdue':
+        return AppColors.overdueBg;
       default:
-        return AppColors.tagGreen;
+        return AppColors.cardBg;
     }
   }
 
   Color get _fg {
     switch (label.toLowerCase()) {
       case 'completed':
-        return AppColors.progressBlue;
+        return AppColors.doneText;
       case 'in progress':
       case 'in-progress':
-        return AppColors.inProgress;
+        return AppColors.inProgressText;
       case 'to do':
-        return AppColors.progressBlue;
+      case 'todo':
+      case 'pending':
+        return AppColors.todoText;
+      case 'overdue':
+        return AppColors.overdueText;
       default:
-        return AppColors.success;
+        return AppColors.textDark;
     }
   }
 

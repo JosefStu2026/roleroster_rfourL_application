@@ -2,28 +2,29 @@
 
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
+import '../services/notification_service.dart';
 import '../services/task_service.dart';
 
 class TaskProvider extends ChangeNotifier {
   final _service = TaskService();
+  final _notificationService = NotificationService();
 
-  List<TaskModel> _tasks    = [];
+  List<TaskModel> _tasks = [];
   List<TaskModel> _archived = [];
-  bool            _loading  = false;
-  String?         _error;
+  bool _loading = false;
+  String? _error;
 
-  List<TaskModel> get tasks    => _tasks;
+  List<TaskModel> get tasks => _tasks;
   List<TaskModel> get archived => _archived;
-  bool            get loading  => _loading;
-  String?         get error    => _error;
+  bool get loading => _loading;
+  String? get error => _error;
 
-  int get pendingCount =>
-      _tasks.where((t) => t.status == 'pending').length;
+  int get pendingCount => _tasks.where((t) => t.status == 'pending').length;
 
   // ── Load tasks for the current user ───────────────────────────────────────
   Future<void> loadTasks(String uid) async {
     _loading = true;
-    _error   = null;
+    _error = null;
     notifyListeners();
 
     try {
@@ -51,6 +52,10 @@ class TaskProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<TaskModel>> fetchTasksForGroup(String groupId) {
+    return _service.fetchTasksForGroup(groupId);
+  }
+
   // ── Create task ───────────────────────────────────────────────────────────
   Future<bool> createTask({
     required String groupId,
@@ -58,18 +63,22 @@ class TaskProvider extends ChangeNotifier {
     required String title,
     required String assignedToId,
     required String assignedToName,
+    required String createdById,
+    required String createdByName,
     required String role,
     required DateTime deadline,
   }) async {
     try {
       final task = await _service.createTask(
-        groupId:        groupId,
-        groupName:      groupName,
-        title:          title,
-        assignedToId:   assignedToId,
+        groupId: groupId,
+        groupName: groupName,
+        title: title,
+        assignedToId: assignedToId,
         assignedToName: assignedToName,
-        role:           role,
-        deadline:       deadline,
+        createdById: createdById,
+        createdByName: createdByName,
+        role: role,
+        deadline: deadline,
       );
       _tasks.insert(0, task);
       notifyListeners();
@@ -83,10 +92,43 @@ class TaskProvider extends ChangeNotifier {
 
   // ── Update task status ────────────────────────────────────────────────────
   Future<void> updateStatus(String taskId, String status) async {
+    final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
+    final task = taskIndex == -1 ? null : _tasks[taskIndex];
     await _service.updateTaskStatus(taskId, status);
-    final idx = _tasks.indexWhere((t) => t.id == taskId);
-    if (idx != -1) {
-      _tasks[idx] = _tasks[idx].copyWith(status: status);
+    if (task != null) {
+      await _notificationService.notifyTaskStatusChange(
+        task: task,
+        status: status,
+      );
+    }
+
+    if (taskIndex != -1) {
+      _tasks[taskIndex] = _tasks[taskIndex].copyWith(
+        status: status,
+        updatedAt: DateTime.now(),
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> reassignTask({
+    required String taskId,
+    required String assignedToId,
+    required String assignedToName,
+  }) async {
+    final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
+    await _service.reassignTask(
+      taskId: taskId,
+      assignedToId: assignedToId,
+      assignedToName: assignedToName,
+    );
+
+    if (taskIndex != -1) {
+      _tasks[taskIndex] = _tasks[taskIndex].copyWith(
+        assignedToId: assignedToId,
+        assignedToName: assignedToName,
+        updatedAt: DateTime.now(),
+      );
       notifyListeners();
     }
   }

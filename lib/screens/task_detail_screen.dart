@@ -1,150 +1,245 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/task_model.dart';
+import '../providers/auth_provider.dart';
+import '../providers/task_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
-class TaskDetailScreen extends StatelessWidget {
-  final String groupName;
-  const TaskDetailScreen({super.key, required this.groupName});
+class TaskDetailScreen extends StatefulWidget {
+  final TaskModel task;
+
+  const TaskDetailScreen({super.key, required this.task});
+
+  @override
+  State<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends State<TaskDetailScreen> {
+  late String _statusValue;
+  final _assigneeNameCtrl = TextEditingController();
+  final _assigneeIdCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _statusValue = _statusLabelFromBackend(widget.task.status);
+    _assigneeNameCtrl.text = widget.task.assignedToName;
+    _assigneeIdCtrl.text = widget.task.assignedToId;
+  }
+
+  @override
+  void dispose() {
+    _assigneeNameCtrl.dispose();
+    _assigneeIdCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProgress() async {
+    final backendStatus = _backendStatusFromLabel(_statusValue);
+    final taskProv = context.read<TaskProvider>();
+    await taskProv.updateStatus(widget.task.id, backendStatus);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Task progress updated.')),
+    );
+  }
+
+  Future<void> _reassign() async {
+    final name = _assigneeNameCtrl.text.trim();
+    final id = _assigneeIdCtrl.text.trim();
+    if (name.isEmpty || id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the member name and ID.')),
+      );
+      return;
+    }
+
+    final taskProv = context.read<TaskProvider>();
+    await taskProv.reassignTask(
+      taskId: widget.task.id,
+      assignedToId: id,
+      assignedToName: name,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Task reassigned.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isOverdue = groupName == 'Data Analysis';
-    final tasks = [
-      _Task('Python Code', 'In Progress', '12/10/2025'),
-      _Task('PPT', 'To Do', '12/15/2025'),
-    ];
+    final auth = context.watch<AuthProvider>();
+    final isLeader = auth.isLeader;
+    final isAssignee = auth.user?.uid == widget.task.assignedToId;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('RoleRoster'),
+        title: const Text('Task Details'),
         backgroundColor: AppColors.primary,
-        actions: [
-          const Icon(Icons.notifications_outlined, color: AppColors.white),
-          const SizedBox(width: 8),
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.white24,
-            child: Icon(Icons.person, color: AppColors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-        ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: const RRSearchBar(),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(groupName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 22)),
-                const SizedBox(width: 12),
-                Text(
-                  '12/16/2025',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isOverdue ? Colors.red : AppColors.textDark,
-                  ),
-                ),
-              ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.task.title,
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Group: ${widget.task.groupName}',
+                      style: const TextStyle(color: AppColors.textLight)),
+                  Text(
+                      'Assigned to: ${widget.task.assignedToName} (${widget.task.assignedToId})',
+                      style: const TextStyle(color: AppColors.textLight)),
+                  Text('Task type: ${widget.task.role}',
+                      style: const TextStyle(color: AppColors.textLight)),
+                  const SizedBox(height: 8),
+                  StatusBadge(label: _statusValue),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                ),
+            const SizedBox(height: 16),
+            if (isLeader) ...[
+              _ActionCard(
+                title: 'Reassign task',
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tasks',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    TextField(
+                      controller: _assigneeNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Member name',
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    ...tasks.map((t) => _TaskCard(task: t)),
+                    TextField(
+                      controller: _assigneeIdCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Member ID',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _reassign,
+                        child: const Text('Reassign to member'),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ),
-        ],
+            ] else if (isAssignee) ...[
+              _ActionCard(
+                title: 'Update progress',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _statusValue,
+                      items: const [
+                        DropdownMenuItem(value: 'To Do', child: Text('To Do')),
+                        DropdownMenuItem(
+                          value: 'On Going',
+                          child: Text('On Going'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Completed',
+                          child: Text('Completed'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _statusValue = value);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Progress status',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saveProgress,
+                        child: const Text('Save progress'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              _ActionCard(
+                title: 'Task access',
+                child: const Text(
+                  'This task is assigned to another member. Only the assignee can update progress.',
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+
+  String _statusLabelFromBackend(String status) {
+    switch (status) {
+      case 'in_progress':
+        return 'On Going';
+      case 'done':
+        return 'Completed';
+      default:
+        return 'To Do';
+    }
+  }
+
+  String _backendStatusFromLabel(String label) {
+    switch (label) {
+      case 'On Going':
+        return 'in_progress';
+      case 'Completed':
+        return 'done';
+      default:
+        return 'pending';
+    }
+  }
 }
 
-class _Task {
-  final String name, status, dueDate;
-  _Task(this.name, this.status, this.dueDate);
-}
+class _ActionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
 
-class _TaskCard extends StatelessWidget {
-  final _Task task;
-  const _TaskCard({required this.task});
+  const _ActionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: AppColors.white, borderRadius: BorderRadius.circular(12)),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(task.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 15)),
-              StatusBadge(label: task.status),
-            ],
-          ),
-          const Divider(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Attachment:',
-                        style:
-                            TextStyle(fontSize: 13, color: AppColors.textMid)),
-                    const SizedBox(height: 6),
-                    const Icon(Icons.insert_drive_file_outlined,
-                        size: 40, color: AppColors.textMid),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Due Date:',
-                        style:
-                            TextStyle(fontSize: 13, color: AppColors.textMid)),
-                    const SizedBox(height: 6),
-                    Text(task.dueDate,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          child,
         ],
       ),
     );
