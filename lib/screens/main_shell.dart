@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../providers/notification_provider.dart';
 import 'dashboard_screen.dart';
 import 'groups_screen.dart';
 import 'my_task_screen.dart';
 import 'projects_screen.dart';
 import 'archived_screen.dart';
-import 'notifications_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -53,52 +50,6 @@ class _MainShellState extends State<MainShell> {
               BottomNavigationBarItem(
                   icon: Icon(Icons.inventory_2_outlined), label: 'Archived'),
             ],
-          ),
-        ),
-        // Global notification bell in top-right
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(right: 12, top: 12),
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Consumer<NotificationProvider>(
-                builder: (context, prov, _) => Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.notifications_outlined,
-                          color: AppColors.primary, size: 28),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationsScreen(),
-                        ),
-                      ),
-                    ),
-                    if (prov.unreadCount > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text('${prov.unreadCount}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
           ),
         ),
       ],

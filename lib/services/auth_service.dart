@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/app_user.dart';
 
 class AuthService {
@@ -20,7 +21,6 @@ class AuthService {
     required String email,
     required String password,
     required String username,
-    required String role,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email,
@@ -32,7 +32,7 @@ class AuthService {
       username: username,
       email: email,
       phone: '',
-      role: role,
+      role: 'Member',
       createdAt: DateTime.now(),
     );
 
@@ -58,14 +58,51 @@ class AuthService {
 
   // ── Google sign-in ───────────────────────────────────────────────────────
   Future<AppUser> signInWithGoogle() async {
-    if (!kIsWeb) {
-      throw UnsupportedError(
-        'Google sign-in is currently configured for web builds only.',
+    if (kIsWeb) {
+      final provider = GoogleAuthProvider()..addScope('email');
+      final cred = await _auth.signInWithPopup(provider);
+      final user = cred.user;
+
+      if (user == null) {
+        throw StateError('Google sign-in did not return a user.');
+      }
+
+      final docRef = _db.collection('users').doc(user.uid);
+      final snap = await docRef.get();
+
+      if (snap.exists && snap.data() != null) {
+        return AppUser.fromMap(snap.data()!, user.uid);
+      }
+
+      final profile = AppUser(
+        uid: user.uid,
+        username: user.displayName?.trim().isNotEmpty == true
+            ? user.displayName!.trim()
+            : (user.email ?? 'User').split('@').first,
+        email: user.email ?? '',
+        phone: '',
+        role: 'Member',
+        photoUrl: user.photoURL,
+        createdAt: DateTime.now(),
       );
+
+      await docRef.set(profile.toMap());
+      return profile;
     }
 
-    final provider = GoogleAuthProvider()..addScope('email');
-    final cred = await _auth.signInWithPopup(provider);
+    final googleSignIn = GoogleSignIn(scopes: ['email']);
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      throw StateError('Google sign-in was cancelled.');
+    }
+
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final cred = await _auth.signInWithCredential(credential);
     final user = cred.user;
 
     if (user == null) {

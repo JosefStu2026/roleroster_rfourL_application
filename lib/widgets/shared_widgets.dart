@@ -4,7 +4,15 @@ import '../theme/app_theme.dart';
 // ── Logo Row ──────────────────────────────────────────────────────────────────
 class RoleRosterLogo extends StatelessWidget {
   final double size;
-  const RoleRosterLogo({super.key, this.size = 40});
+  final Color textColor;
+  final Color iconColor;
+
+  const RoleRosterLogo({
+    super.key,
+    this.size = 40,
+    this.textColor = AppColors.textDark,
+    this.iconColor = AppColors.primary,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +28,11 @@ class RoleRosterLogo extends StatelessWidget {
             color: AppColors.white,
           ),
           child: Center(
-            child: Icon(Icons.auto_stories,
-                color: AppColors.primary, size: size * 0.5),
+            child: Icon(
+              Icons.auto_stories,
+              color: iconColor,
+              size: size * 0.5,
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -30,7 +41,7 @@ class RoleRosterLogo extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: size * 0.6,
-            color: AppColors.textDark,
+            color: textColor,
           ),
         ),
       ],

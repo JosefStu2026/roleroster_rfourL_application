@@ -16,16 +16,10 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  int _step = 0;
-  String? _selectedRole;
-  bool _dropdownOpen = false;
-
   final _usernameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-
-  final _roles = ['Leader', 'Member'];
 
   Future<void> _register() async {
     if (_passCtrl.text != _confirmCtrl.text) {
@@ -33,14 +27,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
-    if (_selectedRole == null) return;
 
     final auth = context.read<AuthProvider>();
     final ok = await auth.register(
       email: _emailCtrl.text.trim(),
       password: _passCtrl.text,
       username: _usernameCtrl.text.trim(),
-      role: _selectedRole!,
     );
 
     if (!mounted) return;
@@ -101,10 +93,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             children: [
-              const RoleRosterLogo(size: 44),
+              const RoleRosterLogo(
+                size: 44,
+                textColor: AppColors.white,
+              ),
               const SizedBox(height: 40),
-              if (_step == 0) _buildCredentials(isLoading),
-              if (_step == 1) _buildRoleStep(isLoading),
+              _buildCredentials(isLoading),
             ],
           ),
         ),
@@ -136,90 +130,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _field(_confirmCtrl,
             hint: 'Confirm password', icon: Icons.lock_outline, obscure: true),
         const SizedBox(height: 20),
-        RRButton(
-            label: 'Next',
-            filled: false,
-            onTap: () {
-              if (_usernameCtrl.text.isEmpty ||
-                  _emailCtrl.text.isEmpty ||
-                  _passCtrl.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Please fill in all fields.')));
-                return;
-              }
-              setState(() => _step = 1);
-            }),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Already have Account?',
-              style: TextStyle(color: AppColors.textMid)),
-        ),
-      ],
-    );
-  }
-
-  // ── Step 1: Role selection ─────────────────────────────────────────────────
-  Widget _buildRoleStep(bool isLoading) {
-    return AuthCard(
-      children: [
-        const Text('Select Role',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 24),
-        GestureDetector(
-          onTap: () => setState(() => _dropdownOpen = !_dropdownOpen),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_selectedRole ?? 'Select role',
-                    style: const TextStyle(color: AppColors.textMid)),
-                Icon(_dropdownOpen ? Icons.expand_less : Icons.expand_more),
-              ],
-            ),
-          ),
-        ),
-        if (_dropdownOpen) ...[
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Column(
-              children: _roles
-                  .map((r) => GestureDetector(
-                        onTap: () => setState(() {
-                          _selectedRole = r;
-                          _dropdownOpen = false;
-                        }),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                          child: Text(r, style: const TextStyle(fontSize: 16)),
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ),
-        ],
-        const SizedBox(height: 20),
         isLoading
             ? const Center(child: CircularProgressIndicator())
             : RRButton(
                 label: 'Register',
-                onTap: _selectedRole != null ? _register : null,
+                onTap: _register,
               ),
         TextButton(
-          onPressed: () => setState(() => _step = 0),
-          child: const Text('Back', style: TextStyle(color: AppColors.textMid)),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Already have Account?',
+              style: TextStyle(color: AppColors.textMid)),
         ),
       ],
     );

@@ -71,7 +71,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isLeader = auth.isLeader;
+    final isLeader = auth.user?.uid == widget.task.createdById;
     final isAssignee = auth.user?.uid == widget.task.assignedToId;
 
     return Scaffold(

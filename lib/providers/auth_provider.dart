@@ -35,7 +35,6 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String username,
-    required String role,
   }) async {
     _setLoading();
     try {
@@ -43,7 +42,6 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         username: username,
-        role: role,
       );
       _status = AuthStatus.authenticated;
       // Save FCM token for this user if available

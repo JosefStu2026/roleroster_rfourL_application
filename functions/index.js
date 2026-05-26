@@ -24,6 +24,13 @@ exports.sendFcmOnNotification = functions.firestore
           title: data.title || 'Notification',
           body: data.body || '',
         },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'role_roster_notifications',
+            sound: 'default',
+          },
+        },
         data: {
           type: data.type || '',
           groupId: data.groupId || '',
@@ -90,6 +97,13 @@ exports.scheduledDueDateCheck = functions.pubsub
                   notification: {
                     title: payload.title,
                     body: payload.body,
+                  },
+                  android: {
+                    priority: 'high',
+                    notification: {
+                      channelId: 'role_roster_notifications',
+                      sound: 'default',
+                    },
                   },
                   data: { type: payload.type, groupId: payload.groupId },
                 });

@@ -1,5 +1,7 @@
 // lib/providers/notification_provider.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/app_notification.dart';
@@ -11,6 +13,7 @@ class NotificationProvider extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _loading = false;
   String? _error;
+  StreamSubscription<List<AppNotification>>? _subscription;
 
   List<AppNotification> get notifications => _notifications;
   bool get loading => _loading;
@@ -24,6 +27,19 @@ class NotificationProvider extends ChangeNotifier {
 
     try {
       _notifications = await _service.fetchNotificationsForUser(uid);
+      await _subscription?.cancel();
+      _subscription = _service.watchNotificationsForUser(uid).listen(
+        (notifications) {
+          _notifications = notifications;
+          _loading = false;
+          notifyListeners();
+        },
+        onError: (Object error) {
+          _error = error.toString();
+          _loading = false;
+          notifyListeners();
+        },
+      );
     } catch (e) {
       _error = e.toString();
     }

@@ -15,6 +15,17 @@ class NotificationService {
 
   CollectionReference get _notifications => _db.collection('notifications');
 
+  Stream<List<AppNotification>> watchNotificationsForUser(String uid) {
+    return _notifications
+        .where('recipientId', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) =>
+                AppNotification.fromMap(d.data() as Map<String, dynamic>, d.id))
+            .toList());
+  }
+
   Future<List<AppNotification>> fetchNotificationsForUser(String uid) async {
     final snap = await _notifications
         .where('recipientId', isEqualTo: uid)

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -21,6 +22,15 @@ import 'providers/task_provider.dart';
 import 'providers/profile_provider.dart';
 import 'services/fcm_service.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: firebase_options.DefaultFirebaseOptions.currentPlatform,
+  );
+  // Background/terminated pushes are displayed by the OS when the payload
+  // includes a notification block. This handler keeps Firebase initialized.
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -28,6 +38,8 @@ void main() async {
   await Firebase.initializeApp(
     options: firebase_options.DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // ── FCM (push notifications) ─────────────────────────────────────────────
   await FcmService().init();

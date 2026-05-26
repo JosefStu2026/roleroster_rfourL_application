@@ -36,10 +36,6 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
       appBar: AppBar(
         title: const Text('RoleRoster'),
         backgroundColor: AppColors.primary,
-        actions: const [
-          Icon(Icons.notifications_outlined, color: AppColors.white),
-          SizedBox(width: 12),
-        ],
       ),
       body: Column(
         children: [

@@ -5,11 +5,9 @@ import '../models/group_model.dart';
 import '../models/task_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
-import '../providers/notification_provider.dart';
 import '../providers/task_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import 'notifications_screen.dart';
 import 'task_detail_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
@@ -53,10 +51,157 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     await _tasksFuture;
   }
 
+  Future<void> _showCreateTaskSheet() async {
+    final auth = context.read<AuthProvider>();
+    final group = widget.group;
+    final titleCtrl = TextEditingController();
+    final roleCtrl = TextEditingController();
+    DateTime selectedDeadline = DateTime.now().add(const Duration(days: 7));
+    String? selectedAssigneeId;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> pickDeadline() async {
+              final date = await showDatePicker(
+                context: sheetContext,
+                initialDate: selectedDeadline,
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (date != null) {
+                setSheetState(() => selectedDeadline = date);
+              }
+            }
+
+            Future<void> submit() async {
+              final assigneeId = selectedAssigneeId;
+              final assigneeName = assigneeId == null
+                  ? ''
+                  : (group.memberNames[assigneeId] ?? assigneeId);
+
+              if (titleCtrl.text.trim().isEmpty ||
+                  assigneeId == null ||
+                  roleCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  const SnackBar(content: Text('Fill in all task fields.')),
+                );
+                return;
+              }
+
+              await sheetContext.read<TaskProvider>().createTask(
+                    groupId: group.id,
+                    groupName: group.name,
+                    title: titleCtrl.text.trim(),
+                    assignedToId: assigneeId,
+                    assignedToName: assigneeName,
+                    createdById: auth.user!.uid,
+                    createdByName: auth.user!.username,
+                    role: roleCtrl.text.trim(),
+                    deadline: selectedDeadline,
+                  );
+
+              if (sheetContext.mounted) Navigator.pop(sheetContext);
+            }
+
+            final candidateMemberIds =
+                group.memberIds.where((id) => id != group.leaderId).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Create Task',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    if (candidateMemberIds.isEmpty)
+                      const Text(
+                        'No accepted members in this group yet.',
+                        style: TextStyle(color: AppColors.textLight),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedAssigneeId,
+                        items: candidateMemberIds
+                            .map(
+                              (memberId) => DropdownMenuItem<String>(
+                                value: memberId,
+                                child: Text(
+                                  '${group.memberNames[memberId] ?? memberId} (${group.memberRoles[memberId] ?? 'Member'})',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (memberId) {
+                          setSheetState(() => selectedAssigneeId = memberId);
+                        },
+                        decoration:
+                            const InputDecoration(labelText: 'Assign member'),
+                      ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: titleCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Task title'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: roleCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Task title / category',
+                        hintText: 'e.g. Create presentation, script, docs',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Deadline: ${selectedDeadline.month}/${selectedDeadline.day}/${selectedDeadline.year}',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: pickDeadline,
+                          child: const Text('Pick date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: submit,
+                        child: const Text('Create task'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    titleCtrl.dispose();
+    roleCtrl.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final notifications = context.watch<NotificationProvider>();
     final isLeader = auth.user?.uid == widget.group.leaderId;
 
     return Scaffold(
@@ -137,32 +282,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     value: 'delete', child: Text('Delete Group')),
               ],
             ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen(),
-                  ),
-                ),
-                icon: const Icon(Icons.notifications_outlined,
-                    color: AppColors.white),
-              ),
-              if (notifications.unreadCount > 0)
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                        shape: BoxShape.circle, color: Colors.red),
-                  ),
-                ),
-            ],
-          ),
           const SizedBox(width: 12),
         ],
       ),
@@ -213,6 +332,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   balanceLabel: balanceLabel,
                 ),
                 const SizedBox(height: 16),
+                if (isLeader) ...[
+                  _SectionCard(
+                    title: 'Task Actions',
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _showCreateTaskSheet,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add task for member'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 _SectionCard(
                   title: 'Members & Roles',
                   child: Column(

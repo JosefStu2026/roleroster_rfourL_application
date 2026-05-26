@@ -22,7 +22,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         title: const Text('RoleRoster'),
         backgroundColor: AppColors.primary,
         actions: [
-          const Icon(Icons.notifications_outlined, color: AppColors.white),
           const SizedBox(width: 8),
           const CircleAvatar(
             radius: 16,

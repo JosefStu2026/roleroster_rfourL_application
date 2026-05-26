@@ -106,7 +106,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Column(
                   children: [
-                    const RoleRosterLogo(size: 44),
+                    const RoleRosterLogo(
+                      size: 44,
+                      textColor: AppColors.white,
+                    ),
                     const SizedBox(height: 24),
                     AuthCard(
                       children: [
