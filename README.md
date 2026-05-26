@@ -19,7 +19,7 @@ RoleRoster is a Flutter + Firebase group management and task tracking app for sm
 
 Use the built debug APK:
 
-[app-debug.apk](build/app/outputs/flutter-apk/app-debug.apk)
+[RoleRoster_RfourL.apk]([build/app/outputs/flutter-apk/app-debug.apk](https://drive.google.com/file/d/1WQWGCnL4eGuyavfJf62Ghtff-X56Jxvi/view?usp=sharing))
 
 Steps:
 
