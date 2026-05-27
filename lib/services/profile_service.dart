@@ -4,6 +4,7 @@
 // then saves the download URL back to Firestore.
 
 import 'dart:io';
+import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,6 +14,7 @@ class ProfileService {
   FirebaseStorage get _storage => FirebaseStorage.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
   final _picker = ImagePicker();
+  final _uuid = const Uuid();
 
   // ── Pick image from gallery or camera ─────────────────────────────────────
   Future<File?> pickImage({bool fromCamera = false}) async {
@@ -27,9 +29,16 @@ class ProfileService {
 
   // ── Upload to Firebase Storage & save URL to Firestore ───────────────────
   Future<String> uploadProfilePhoto(String uid, File imageFile) async {
-    final ref = _storage.ref().child('profile_photos').child('$uid.jpg');
+    final fileId = _uuid.v4();
+    final ref =
+        _storage.ref().child('profile_photos').child(uid).child('$fileId.jpg');
 
-    await ref.putFile(imageFile);
+    // Use putFile which is more efficient and preserves metadata
+    await ref.putFile(
+      imageFile,
+      SettableMetadata(contentType: 'image/jpeg'),
+    );
+
     final url = await ref.getDownloadURL();
 
     // Update user's Firestore document with the new photo URL
@@ -44,7 +53,13 @@ class ProfileService {
       {required bool fromCamera}) async {
     final file = await pickImage(fromCamera: fromCamera);
     if (file == null) return null;
-    return uploadProfilePhoto(uid, file);
+
+    try {
+      return await uploadProfilePhoto(uid, file);
+    } catch (_) {
+      // Return null so callers know the upload failed and can show an error
+      return null;
+    }
   }
 
   Future<void> changePassword({

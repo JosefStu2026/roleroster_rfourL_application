@@ -41,109 +41,125 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ? const Center(child: Text('Please sign in again.'))
           : notificationProv.loading
               ? const Center(child: CircularProgressIndicator())
-              : notificationProv.notifications.isEmpty
-                  ? const Center(
-                      child: Text('No notifications yet.',
-                          style: TextStyle(color: AppColors.textLight)),
+              : notificationProv.error != null
+                  ? Center(
+                      child: Text(
+                        notificationProv.error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     )
-                  : RefreshIndicator(
-                      onRefresh: () =>
-                          context.read<NotificationProvider>().refresh(uid),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: notificationProv.notifications.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final notification =
-                              notificationProv.notifications[index];
-                          final isInvite =
-                              notification.type == 'group_invite_pending';
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: (notification.isRead || isInvite)
-                                ? null
-                                : () => context
-                                    .read<NotificationProvider>()
-                                    .markAsRead(notification.id, uid),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: notification.isRead
-                                    ? AppColors.white
-                                    : const Color(0xFFEAF2FF),
+                  : notificationProv.notifications.isEmpty
+                      ? const Center(
+                          child: Text('No notifications yet.',
+                              style: TextStyle(color: AppColors.textLight)),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () =>
+                              context.read<NotificationProvider>().refresh(uid),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: notificationProv.notifications.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final notification =
+                                  notificationProv.notifications[index];
+                              final isInvite =
+                                  notification.type == 'group_invite_pending';
+                              return InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+                                onTap: (notification.isRead || isInvite)
+                                    ? null
+                                    : () => context
+                                        .read<NotificationProvider>()
+                                        .markAsRead(notification.id, uid),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: notification.isRead
+                                        ? AppColors.white
+                                        : const Color(0xFFEAF2FF),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Text(
-                                          notification.title,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              notification.title,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
                                           ),
+                                          if (!notification.isRead)
+                                            const Icon(Icons.circle,
+                                                size: 10,
+                                                color: AppColors.accent),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(notification.body,
+                                          style: const TextStyle(
+                                              color: AppColors.textDark,
+                                              height: 1.35)),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        notification.createdAt
+                                            .toLocal()
+                                            .toString(),
+                                        style: const TextStyle(
+                                          color: AppColors.textLight,
+                                          fontSize: 11,
                                         ),
                                       ),
-                                      if (!notification.isRead)
-                                        const Icon(Icons.circle,
-                                            size: 10, color: AppColors.accent),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(notification.body,
-                                      style: const TextStyle(
-                                          color: AppColors.textDark,
-                                          height: 1.35)),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    notification.createdAt.toLocal().toString(),
-                                    style: const TextStyle(
-                                      color: AppColors.textLight,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  if (isInvite && !notification.isRead) ...[
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () => context
-                                                .read<NotificationProvider>()
-                                                .respondToGroupInvite(
-                                                  notification: notification,
-                                                  uid: uid,
-                                                  accept: false,
-                                                ),
-                                            child: const Text('Decline'),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () => context
-                                                .read<NotificationProvider>()
-                                                .respondToGroupInvite(
-                                                  notification: notification,
-                                                  uid: uid,
-                                                  accept: true,
-                                                ),
-                                            child: const Text('Accept'),
-                                          ),
+                                      if (isInvite && !notification.isRead) ...[
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: () => context
+                                                    .read<
+                                                        NotificationProvider>()
+                                                    .respondToGroupInvite(
+                                                      notification:
+                                                          notification,
+                                                      uid: uid,
+                                                      accept: false,
+                                                    ),
+                                                child: const Text('Decline'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () => context
+                                                    .read<
+                                                        NotificationProvider>()
+                                                    .respondToGroupInvite(
+                                                      notification:
+                                                          notification,
+                                                      uid: uid,
+                                                      accept: true,
+                                                    ),
+                                                child: const Text('Accept'),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
     );
   }
 }

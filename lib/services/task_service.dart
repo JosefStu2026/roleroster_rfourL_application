@@ -61,13 +61,15 @@ class TaskService {
 
   /// Fetch tasks from Firestore assigned to a user.
   Future<List<remote.TaskModel>> fetchTasksForUser(String uid) async {
-    final snap = await _tasks
-        .where('assignedToId', isEqualTo: uid)
-        .where('status', whereNotIn: ['archived']).get();
+    // Firestore does not always support complex negative filters reliably
+    // across SDK versions or require composite indexes. Fetch by assignee
+    // then filter out archived locally.
+    final snap = await _tasks.where('assignedToId', isEqualTo: uid).get();
 
     final list = snap.docs
         .map((d) =>
             remote.TaskModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+        .where((t) => t.status != 'archived')
         .toList();
 
     // Sync to Hive

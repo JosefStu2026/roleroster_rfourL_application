@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../theme/app_theme.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -162,6 +165,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    await context.read<AuthProvider>().logout();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -209,8 +222,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 52,
                       backgroundColor:
                           AppColors.textMid.withValues(alpha: 0.15),
-                      backgroundImage:
-                          photoUrl != null ? NetworkImage(photoUrl) : null,
+                      backgroundImage: _imageProvider(photoUrl),
+                      onBackgroundImageError: (_, __) {},
                       child: photoUrl == null
                           ? Text(
                               initials.isEmpty ? 'U' : initials,
@@ -364,10 +377,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            const Text(
+              'Session',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _PanelCard(
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  label: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  ImageProvider? _imageProvider(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+
+    final uri = Uri.tryParse(value);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return NetworkImage(value);
+    }
+
+    if (value.startsWith('file://')) {
+      return FileImage(File.fromUri(Uri.parse(value)));
+    }
+
+    final file = File(value);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    return NetworkImage(value);
   }
 }
 

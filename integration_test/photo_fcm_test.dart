@@ -81,4 +81,11 @@ class _MockFcmService implements FcmService {
 
   @override
   Future<String?> getToken() async => 'mock-token';
+
+  @override
+  Future<void> showLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {}
 }

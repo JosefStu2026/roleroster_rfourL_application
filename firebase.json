@@ -1,1 +1,28 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"roleroster-68ac9","appId":"1:708125558269:android:d3e9e5cac7213033eb8594","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"roleroster-68ac9","configurations":{"android":"1:708125558269:android:d3e9e5cac7213033eb8594","ios":"1:708125558269:ios:3f6bedc04f6e563aeb8594","macos":"1:708125558269:ios:3f6bedc04f6e563aeb8594","web":"1:708125558269:web:3a59c3f3462d4e36eb8594","windows":"1:708125558269:web:3c2407e73c9f5cfbeb8594"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "roleroster-68ac9",
+          "appId": "1:708125558269:android:d3e9e5cac7213033eb8594",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "roleroster-68ac9",
+          "configurations": {
+            "android": "1:708125558269:android:d3e9e5cac7213033eb8594",
+            "ios": "1:708125558269:ios:3f6bedc04f6e563aeb8594",
+            "macos": "1:708125558269:ios:3f6bedc04f6e563aeb8594",
+            "web": "1:708125558269:web:3a59c3f3462d4e36eb8594",
+            "windows": "1:708125558269:web:3c2407e73c9f5cfbeb8594"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions"
+  }
+}

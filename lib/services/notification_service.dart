@@ -18,24 +18,28 @@ class NotificationService {
   Stream<List<AppNotification>> watchNotificationsForUser(String uid) {
     return _notifications
         .where('recipientId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) =>
-                AppNotification.fromMap(d.data() as Map<String, dynamic>, d.id))
-            .toList());
+        .map((snap) {
+      final notifications = snap.docs
+          .map((d) =>
+              AppNotification.fromMap(d.data() as Map<String, dynamic>, d.id))
+          .toList();
+      notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return notifications;
+    });
   }
 
   Future<List<AppNotification>> fetchNotificationsForUser(String uid) async {
-    final snap = await _notifications
-        .where('recipientId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .get();
+    final snap =
+        await _notifications.where('recipientId', isEqualTo: uid).get();
 
-    return snap.docs
+    final notifications = snap.docs
         .map((d) =>
             AppNotification.fromMap(d.data() as Map<String, dynamic>, d.id))
         .toList();
+
+    notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return notifications;
   }
 
   Future<void> markAsRead(String notificationId) async {

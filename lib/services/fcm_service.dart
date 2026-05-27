@@ -6,8 +6,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+
+  static bool _initialized = false;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'role_roster_notifications',
@@ -17,6 +19,7 @@ class FcmService {
   );
 
   Future<void> init() async {
+    if (_initialized) return;
     try {
       // Request permission (for iOS / web interactive prompts)
       await _messaging.requestPermission(alert: true, badge: true, sound: true);
@@ -72,6 +75,8 @@ class FcmService {
         // ignore: avoid_print
         print('FCM onMessageOpenedApp: ${message.data}');
       });
+
+      _initialized = true;
     } catch (e) {
       // ignore: avoid_print
       print('FCM init error: $e');
@@ -80,4 +85,26 @@ class FcmService {
 
   /// Returns the current FCM token for this device (may be null).
   Future<String?> getToken() => _messaging.getToken();
+
+  /// Shows a local notification immediately on the current device.
+  Future<void> showLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await _localNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  }
 }
