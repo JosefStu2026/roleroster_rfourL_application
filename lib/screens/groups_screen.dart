@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
 import 'create_group_project_screen.dart';
 import 'group_detail_screen.dart';
+import 'profile_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -57,20 +58,30 @@ class _GroupsScreenState extends State<GroupsScreen> {
             tooltip: 'Create group',
           ),
           const SizedBox(width: 8),
-          Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white24,
-            ),
-            child: Center(
-              child: Text(initials,
-                  style: const TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ProfileScreen(),
+                ),
+              );
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white24,
+              ),
+              child: Center(
+                child: Text(initials,
+                    style: const TextStyle(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13)),
+              ),
             ),
           ),
         ],

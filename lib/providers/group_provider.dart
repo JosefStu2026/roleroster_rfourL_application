@@ -10,10 +10,12 @@ class GroupProvider extends ChangeNotifier {
   final _notificationService = NotificationService();
 
   List<GroupModel> _groups = [];
+  List<GroupModel> _archivedGroups = [];
   bool _loading = false;
   String? _error;
 
   List<GroupModel> get groups => _groups;
+  List<GroupModel> get archivedGroups => _archivedGroups;
   bool get loading => _loading;
   String? get error => _error;
 
@@ -32,6 +34,21 @@ class GroupProvider extends ChangeNotifier {
         groups: _groups,
       );
       await _notificationService.checkDueDates(groups: _groups);
+    } catch (e) {
+      _error = e.toString();
+    }
+
+    _loading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadArchivedGroups(String uid) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _archivedGroups = await _service.fetchArchivedGroupsForUser(uid);
     } catch (e) {
       _error = e.toString();
     }
@@ -86,7 +103,27 @@ class GroupProvider extends ChangeNotifier {
       await _service.archiveGroup(groupId: groupId, requesterId: requesterId);
       final idx = _groups.indexWhere((g) => g.id == groupId);
       if (idx != -1) {
-        _groups.removeAt(idx);
+        final group = _groups.removeAt(idx);
+        _archivedGroups.insert(
+          0,
+          GroupModel(
+            id: group.id,
+            name: group.name,
+            title: group.title,
+            leaderId: group.leaderId,
+            leaderName: group.leaderName,
+            memberIds: group.memberIds,
+            memberNames: group.memberNames,
+            memberRoles: group.memberRoles,
+            totalTasks: group.totalTasks,
+            doneTasks: group.doneTasks,
+            startedAt: group.startedAt,
+            dueAt: group.dueAt,
+            createdAt: group.createdAt,
+            archived: true,
+            archivedAt: DateTime.now(),
+          ),
+        );
         notifyListeners();
       }
     } catch (e) {

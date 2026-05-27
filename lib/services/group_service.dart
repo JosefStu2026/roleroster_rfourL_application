@@ -99,6 +99,25 @@ class GroupService {
         .toList();
   }
 
+  Future<List<GroupModel>> fetchArchivedGroupsForUser(String uid) async {
+    final snap = await _groups
+        .where('memberIds', arrayContains: uid)
+        .where('archived', isEqualTo: true)
+        .get();
+
+    final archived = snap.docs
+        .map((d) => GroupModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+        .toList();
+
+    archived.sort((a, b) {
+      final aAt = a.archivedAt ?? a.createdAt;
+      final bAt = b.archivedAt ?? b.createdAt;
+      return bAt.compareTo(aAt);
+    });
+
+    return archived;
+  }
+
   Future<GroupModel?> fetchGroupById(String groupId) async {
     final doc = await _groups.doc(groupId).get();
     if (!doc.exists || doc.data() == null) return null;

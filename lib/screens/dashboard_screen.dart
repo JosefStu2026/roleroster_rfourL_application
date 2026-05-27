@@ -10,6 +10,7 @@ import '../providers/group_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/task_provider.dart';
 import 'notifications_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -69,11 +70,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: const Color.fromARGB(255, 255, 255, 255)
                             .withValues(alpha: 0.5),
                       ),
-                      child: Center(
-                        child: Text(initials,
-                            style: const TextStyle(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.bold)),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileScreen(),
+                            ),
+                          );
+                        },
+                        child: Center(
+                          child: Text(initials,
+                              style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

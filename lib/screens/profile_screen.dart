@@ -1,13 +1,10 @@
-// lib/screens/profile_screen.dart
-// REPLACE your existing profile_screen.dart with this file.
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:hive/hive.dart';
-import '../theme/app_theme.dart';
+import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
-import 'settings_screen.dart';
+import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,54 +14,35 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _nameCtrl;
-  late TextEditingController _phoneCtrl;
-  bool _editing = false;
+  late final TextEditingController _usernameCtrl;
+  late final TextEditingController _currentPasswordCtrl;
+  late final TextEditingController _newPasswordCtrl;
+  late final TextEditingController _confirmPasswordCtrl;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
-    _nameCtrl = TextEditingController(text: user?.username ?? '');
-    _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _usernameCtrl = TextEditingController(text: user?.username ?? '');
+    _currentPasswordCtrl = TextEditingController();
+    _newPasswordCtrl = TextEditingController();
+    _confirmPasswordCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
+    _usernameCtrl.dispose();
+    _currentPasswordCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
-  // ── Save profile edits ────────────────────────────────────────────────────
-  Future<void> _save() async {
-    final auth = context.read<AuthProvider>();
-    final profile = context.read<ProfileProvider>();
-
-    final updated = auth.user!.copyWith(
-      username: _nameCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
-    );
-
-    final ok = await profile.updateProfile(updated);
-    if (!mounted) return;
-
-    if (ok) {
-      auth.updateLocalUser(updated);
-      setState(() => _editing = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Profile updated!')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(profile.error ?? 'Update failed.')));
-    }
-  }
-
-  // ── Pick profile photo ────────────────────────────────────────────────────
   Future<void> _pickPhoto() async {
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -72,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               leading: const Icon(Icons.camera_alt),
               title: const Text('Take a photo'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _uploadPhoto(fromCamera: true);
               },
             ),
@@ -80,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               leading: const Icon(Icons.photo_library),
               title: const Text('Choose from gallery'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _uploadPhoto(fromCamera: false);
               },
             ),
@@ -93,23 +71,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _uploadPhoto({required bool fromCamera}) async {
     final auth = context.read<AuthProvider>();
     final profile = context.read<ProfileProvider>();
+    final user = auth.user;
+    if (user == null) return;
 
-    final url =
-        await profile.changePhoto(auth.user!.uid, fromCamera: fromCamera);
-
+    final url = await profile.changePhoto(user.uid, fromCamera: fromCamera);
     if (!mounted) return;
 
     if (url != null) {
-      auth.updateLocalUser(auth.user!.copyWith(photoUrl: url));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Photo updated!')));
+      auth.updateLocalUser(user.copyWith(photoUrl: url));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated.')),
+      );
+    } else if (profile.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(profile.error!)),
+      );
+    }
+  }
+
+  Future<void> _saveUsername() async {
+    final auth = context.read<AuthProvider>();
+    final profile = context.read<ProfileProvider>();
+    final user = auth.user;
+    if (user == null) return;
+
+    final updated = user.copyWith(username: _usernameCtrl.text.trim());
+    final ok = await profile.updateProfile(updated);
+    if (!mounted) return;
+
+    if (ok) {
+      auth.updateLocalUser(updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username updated.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(profile.error ?? 'Failed to update username.')),
+      );
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final profile = context.read<ProfileProvider>();
+
+    final currentPassword = _currentPasswordCtrl.text;
+    final newPassword = _newPasswordCtrl.text;
+    final confirmPassword = _confirmPasswordCtrl.text;
+
+    if (currentPassword.isEmpty ||
+        newPassword.isEmpty ||
+        confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fill in all password fields.')),
+      );
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('New password must be at least 6 characters.')),
+      );
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New passwords do not match.')),
+      );
+      return;
+    }
+
+    final ok = await profile.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    if (!mounted) return;
+
+    if (ok) {
+      _currentPasswordCtrl.clear();
+      _newPasswordCtrl.clear();
+      _confirmPasswordCtrl.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password changed successfully.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(profile.error ?? 'Failed to change password.')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-    final isLoading = context.watch<ProfileProvider>().loading;
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    final profile = context.watch<ProfileProvider>();
+    final isLoading = profile.loading;
+
     String? cachedPhoto;
     if (user?.uid != null) {
       try {
@@ -120,60 +179,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
+    final photoUrl = user?.photoUrl ?? cachedPhoto;
+    final initials = (user?.username ?? 'U')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0])
+        .take(2)
+        .join()
+        .toUpperCase();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('User Profile'),
+        title: const Text('Profile Management'),
         backgroundColor: AppColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_editing ? Icons.close : Icons.edit,
-                color: AppColors.white),
-            onPressed: () => setState(() => _editing = !_editing),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_editing ? 'Editing Profile' : 'Edit Profile',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                OutlinedButton(
-                  onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const SettingsScreen())),
-                  child: const Text('Settings'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // ── Avatar ─────────────────────────────────────────────────────
             Center(
               child: GestureDetector(
-                onTap: _pickPhoto,
+                onTap: isLoading ? null : _pickPhoto,
                 child: Stack(
                   children: [
                     CircleAvatar(
-                      radius: 48,
+                      radius: 52,
                       backgroundColor:
                           AppColors.textMid.withValues(alpha: 0.15),
-                      backgroundImage: (user?.photoUrl ?? cachedPhoto) != null
-                          ? NetworkImage(user?.photoUrl ?? cachedPhoto!)
-                          : null,
-                      child: (user?.photoUrl ?? cachedPhoto) == null
-                          ? const Icon(Icons.person,
-                              size: 56, color: AppColors.primary)
+                      backgroundImage:
+                          photoUrl != null ? NetworkImage(photoUrl) : null,
+                      child: photoUrl == null
+                          ? Text(
+                              initials.isEmpty ? 'U' : initials,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            )
                           : null,
                     ),
                     Positioned(
@@ -182,7 +228,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
-                            shape: BoxShape.circle, color: AppColors.primary),
+                          shape: BoxShape.circle,
+                          color: AppColors.primary,
+                        ),
                         child: const Icon(Icons.edit,
                             size: 16, color: AppColors.white),
                       ),
@@ -190,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (isLoading)
                       const Positioned.fill(
                         child: CircleAvatar(
-                          radius: 48,
+                          radius: 52,
                           backgroundColor: Colors.black26,
                           child:
                               CircularProgressIndicator(color: AppColors.white),
@@ -200,57 +248,122 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            // ── Fields ─────────────────────────────────────────────────────
-            _FieldRow(
-              label: 'Full Name',
-              value: user?.username ?? '',
-              controller: _nameCtrl,
-              editing: _editing,
+            const SizedBox(height: 24),
+            const Text(
+              'Account Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            _FieldRow(
-              label: 'Account ID',
-              value: user?.uid.substring(0, 8).toUpperCase() ?? '',
-              controller: null,
-              editing: false, // never editable
-            ),
-            _FieldRow(
-              label: 'Email Address',
-              value: user?.email ?? '',
-              controller: null,
-              editing: false, // managed by Firebase Auth
-            ),
-            _FieldRow(
-              label: 'Phone Number',
-              value: user?.phone ?? '',
-              controller: _phoneCtrl,
-              editing: _editing,
-            ),
-            _FieldRow(
-              label: 'Role',
-              value: user?.role ?? '',
-              controller: null,
-              editing: false,
-            ),
-            if (_editing) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
+            const SizedBox(height: 12),
+            _PanelCard(
+              child: Column(
+                children: [
+                  _ReadOnlyRow(label: 'Email', value: user?.email ?? '-'),
+                  const SizedBox(height: 12),
+                  _ReadOnlyRow(label: 'User ID', value: user?.uid ?? '-'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _usernameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                    ),
                   ),
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: AppColors.white)
-                      : const Text('Save Changes',
-                          style: TextStyle(color: AppColors.white)),
-                ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : _saveUsername,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: isLoading
+                          ? const CircularProgressIndicator(
+                              color: AppColors.white)
+                          : const Text(
+                              'Save Username',
+                              style: TextStyle(color: AppColors.white),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Change Password',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _PanelCard(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _currentPasswordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Current password',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _newPasswordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'New password',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _confirmPasswordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm new password',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : _changePassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.textDark,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: isLoading
+                          ? const CircularProgressIndicator(
+                              color: AppColors.white)
+                          : const Text(
+                              'Update Password',
+                              style: TextStyle(color: AppColors.white),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Profile Photo',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _PanelCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Tap your profile picture above to change it using the camera or gallery.',
+                    style: TextStyle(color: AppColors.textLight),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: isLoading ? null : _pickPhoto,
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Change Profile Photo'),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -258,53 +371,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _FieldRow extends StatelessWidget {
-  final String label, value;
-  final TextEditingController? controller;
-  final bool editing;
+class _PanelCard extends StatelessWidget {
+  final Widget child;
 
-  const _FieldRow({
-    required this.label,
-    required this.value,
-    required this.controller,
-    required this.editing,
-  });
+  const _PanelCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
-          const SizedBox(height: 4),
-          editing && controller != null
-              ? TextField(
-                  controller: controller,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AppColors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primary),
-                    ),
-                  ),
-                )
-              : Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: Text(value, style: const TextStyle(fontSize: 15)),
-                ),
-        ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
       ),
+      child: child,
+    );
+  }
+}
+
+class _ReadOnlyRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReadOnlyRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textLight,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Text(value, style: const TextStyle(fontSize: 15)),
+        ),
+      ],
     );
   }
 }

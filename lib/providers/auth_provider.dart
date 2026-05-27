@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hive/hive.dart';
 import '../services/fcm_service.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
@@ -43,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         username: username,
       );
+      _cacheUser(_user!);
       _status = AuthStatus.authenticated;
       // Save FCM token for this user if available
       try {
@@ -72,6 +74,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading();
     try {
       _user = await _service.login(email: email, password: password);
+      _cacheUser(_user!);
       _status = AuthStatus.authenticated;
       // Save FCM token for this user if available
       try {
@@ -97,6 +100,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading();
     try {
       _user = await _service.signInWithGoogle();
+      _cacheUser(_user!);
       _status = AuthStatus.authenticated;
       // Save FCM token for this user if available
       try {
@@ -165,6 +169,9 @@ class AuthProvider extends ChangeNotifier {
       }
       // update local user copy
       _user = _user?.copyWith(notificationsEnabled: enabled);
+      if (_user != null) {
+        _cacheUser(_user!);
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -187,6 +194,7 @@ class AuthProvider extends ChangeNotifier {
   // ── Update local user copy (called by ProfileProvider) ───────────────────
   void updateLocalUser(AppUser updated) {
     _user = updated;
+    _cacheUser(updated);
     notifyListeners();
   }
 
@@ -209,5 +217,11 @@ class AuthProvider extends ChangeNotifier {
         normalized == 'teacher' ||
         normalized == 'lead' ||
         normalized == 'manager';
+  }
+
+  void _cacheUser(AppUser user) {
+    try {
+      Hive.box('users').put(user.uid, user.toMap());
+    } catch (_) {}
   }
 }

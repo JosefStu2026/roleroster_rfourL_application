@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/group_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import 'profile_screen.dart';
 
-class ArchivedScreen extends StatelessWidget {
+class ArchivedScreen extends StatefulWidget {
   const ArchivedScreen({super.key});
 
   @override
+  State<ArchivedScreen> createState() => _ArchivedScreenState();
+}
+
+class _ArchivedScreenState extends State<ArchivedScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final uid = context.read<AuthProvider>().user?.uid;
+      if (uid != null) {
+        context.read<GroupProvider>().loadArchivedGroups(uid);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final archived = [
-      _Archived('Info Ass', 'Cyr', 'Mr. Kenner', '11/23/2025'),
-      _Archived('Data Analysis', 'Onia', 'Mr. Jabong', '11/23/2025'),
-      _Archived('Comp Net', 'You', 'Mr. Kenner', '11/16/2025'),
-    ];
+    final groupProv = context.watch<GroupProvider>();
+    final archived = groupProv.archivedGroups;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -20,60 +37,86 @@ class ArchivedScreen extends StatelessWidget {
         backgroundColor: AppColors.primary,
         actions: [
           const SizedBox(width: 8),
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.white24,
-            child: Icon(Icons.person, color: AppColors.white, size: 18),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ProfileScreen(),
+                ),
+              );
+            },
+            child: const CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.person, color: AppColors.white, size: 18),
+            ),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: const RRSearchBar(),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: archived.length,
-              itemBuilder: (ctx, i) {
-                final a = archived[i];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(a.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18)),
-                      const SizedBox(height: 6),
-                      _InfoRow('Leader', a.leader),
-                      _InfoRow('Prof', a.prof),
-                      _InfoRow('Completed', a.completed),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: const Text('View Details',
-                              style: TextStyle(color: AppColors.textMid)),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+      body: RefreshIndicator(
+        onRefresh: () async {
+          final uid = context.read<AuthProvider>().user?.uid;
+          if (uid != null) {
+            await context.read<GroupProvider>().loadArchivedGroups(uid);
+          }
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: const RRSearchBar(),
             ),
-          ),
-        ],
+            Expanded(
+              child: groupProv.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : archived.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No archived projects yet.',
+                            style: TextStyle(color: AppColors.textLight),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: archived.length,
+                          itemBuilder: (ctx, i) {
+                            final a = archived[i];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.cardBg,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(a.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18)),
+                                  const SizedBox(height: 6),
+                                  _InfoRow('Leader', a.leaderName),
+                                  _InfoRow('Title', a.title),
+                                  _InfoRow(
+                                      'Completed', _formatDate(a.archivedAt)),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return '-';
+    return '${value.month}/${value.day}/${value.year}';
   }
 }
 
@@ -98,9 +141,4 @@ class _InfoRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Archived {
-  final String name, leader, prof, completed;
-  _Archived(this.name, this.leader, this.prof, this.completed);
 }

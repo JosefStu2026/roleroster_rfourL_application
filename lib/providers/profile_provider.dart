@@ -27,6 +27,9 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _authService.updateUser(updatedUser);
+      try {
+        Hive.box('users').put(updatedUser.uid, updatedUser.toMap());
+      } catch (_) {}
       _loading = false;
       notifyListeners();
       return true;
@@ -60,6 +63,29 @@ class ProfileProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _profileService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
     }
   }
 }
